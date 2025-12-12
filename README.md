@@ -1,31 +1,76 @@
-# Spotify_analyze
-Product-Analytics Mini Project — Spotify Listening Data
+# Анализ данных Spotify и симуляция A/B-тестирования
 
-This repo contains a compact, reproducible analysis pipeline built around a public “Spotify songs” dataset.
-It cleans raw records, runs EDA, derives product metrics, and demonstrates a lightweight A/B-testing workflow for two concrete hypotheses about ranking and content length.
+Этот проект представляет собой комплексный анализ, построенный на публичном датасете песен Spotify. Работа включает в себя полный цикл исследования данных: от первичной очистки и разведочного анализа (EDA) до расчета продуктовых метрик и проведения симуляции A/B-тестирования для проверки гипотез о влиянии ранжирования и длительности треков на вовлеченность пользователей.
 
-**Data prep**: schema harmonization, type fixes, de-duplication, removal of obvious outliers, handling missing values.
-**Inputs (examples in `data/`):**
-- `jla_mub_synth.csv`: `z, mu_obs, sigma_mu`
-- `hz_synth.csv`: `z, H_obs, sigma_H` (km/s/Mpc)
-- `bao_synth.csv`: `z, Dv_over_rd, sigma` (dimensionless)в
+## Данные
 
-**EDA (notebook):**
-- `Popularity by release year (mean/median) with yearly volume plot to avoid sample-size bias`;
-- `Track count by year; average duration by era (<1980 / 1980–2009 / 2010+)`;
-- `Mode (major/minor) distribution by genre; valence heat-map (genre × mood bins)`;
-- `Hit analysis (popularity≥70) by genre/subgenre across eras (60–80, 80–90, 90–00, 00–10, 10–20)`.
+Проект использует датасет треков Spotify, включающий следующие категории признаков:
+- **Метаданные:** ID трека, название, исполнитель, альбом, дата релиза.
+- **Плейлисты:** Жанр (`playlist_genre`), поджанр (`playlist_subgenre`), название плейлиста.
+- **Аудио-характеристики:** `danceability`, `energy`, `key`, `loudness`, `mode`, `speechiness`, `acousticness`, `instrumentalness`, `liveness`, `valence`, `tempo`.
+- **Технические параметры:** Длительность (`duration_ms`), популярность (`track_popularity`).
 
-**Metrics** used in tests: average listened time, completion rate (CNR = listened_ms / duration_ms), early-skip rate (<30s), hit-share.
+**Этапы предобработки:**
+- Приведение типов данных и гармонизация схемы.
+- Удаление дубликатов и явных выбросов.
+- Обработка пропущенных значений.
+- Создание производных признаков (год/месяц релиза, длительность в минутах).
 
-**Hypotheses under test**
-G1: “Placing tracks in top editorial slots (1–5) inflates engagement vs slots 6–10.”
-G2: “Among top-slot items, very long tracks (>4 min) increase early-skip rate.”
+---
 
-**Experiment design (simulated)**: random user-level assignment to control/treatment, optional stratification by historical popularity/era; power check; A/A sanity.
-Inference: Welch’s t-test and Mann–Whitney U; non-parametric bootstrap CIs; Benjamini–Hochberg FDR; optional CUPED for variance reduction.
+## Разведочный анализ (EDA)
 
-**Outputs**: clear plots, per-metric test tables (effect size, CI, p-values, power), and brief interpretation cells ready for a report.
+1. **Временной анализ:**
+   - Динамика популярности треков по годам выпуска (среднее/медиана).
+   - Анализ объема выпускаемого контента по годам.
+   - Изменение средней длительности треков по эрам (<1980, 1980–2009, 2010+).
 
-**Stack**: Python (pandas, NumPy, SciPy, statsmodels, scikit-learn for stratification & bootstrap), matplotlib / seaborn, Jupyter.
-Everything runs from the notebook; no external services required.
+2. **Жанровый анализ:**
+   - Распределение мажорных (`major`) и минорных (`minor`) тональностей внутри жанров.
+   - Тепловая карта валентности (позитивности трека) в разрезе «жанр × настроение».
+
+3. **Анализ хитов:**
+   - Исследование треков с высокой популярностью (≥70) по жанрам, поджанрам и временным эпохам (60–80-е, 80–90-е, 90–00-е и т.д.).
+
+---
+
+## Гипотезы и A/B-тестирование
+
+В проекте реализован сценарий **симуляции эксперимента** для проверки продуктовых гипотез.
+
+### Метрики
+Для оценки используются ключевые метрики вовлеченности:
+- **Average Listened Time:** Среднее время прослушивания.
+- **Completion Rate (CNR):** Отношение прослушанного времени к длительности трека.
+- **Early-Skip Rate:** Доля пропусков трека в первые 30 секунд.
+- **Hit-Share:** Доля хитов в прослушивании.
+
+### Проверяемые гипотезы
+| Гипотеза | Описание |
+|----------|----------|
+| **G1 (Влияние позиции)** | Размещение треков в топ-слотах рекомендаций (позиции 1–5) значимо повышает метрики вовлеченности по сравнению с позициями 6–10. |
+| **G2 (Влияние длительности)** | Среди треков в топ-слотах, длинные композиции (>4 мин) провоцируют увеличение `early-skip rate`. |
+
+### Дизайн эксперимента
+- **Рандомизация:** Случайное распределение пользователей (User-level) в контрольную и тестовую группы.
+- **Стратификация:** Опциональная балансировка групп по исторической популярности или эре треков.
+- **Проверки:** Расчет мощности (Power Analysis) и проведение A/A-тестов для проверки корректности системы сплитования.
+
+### Статистический вывод
+Для оценки результатов применяются:
+- **Параметрические тесты:** t-тест Уэлча.
+- **Непараметрические тесты:** U-тест Манна-Уитни.
+- **Бутстреп (Bootstrap):** Построение доверительных интервалов.
+- **Коррекция:** Поправка Бенджамини-Хохберга (FDR) для множественной проверки гипотез.
+- **CUPED:** Метод снижения дисперсии для повышения чувствительности тестов.
+
+---
+
+## Стек технологий
+
+Проект выполнен на **Python** с использованием следующих библиотек:
+
+- **Обработка данных:** `pandas`, `numpy`
+- **Статистика и ML:** `scipy`, `statsmodels`, `scikit-learn` (для стратификации и бутстрепа)
+- **Визуализация:** `matplotlib`, `seaborn`
+- **Среда выполнения:** Jupyter Notebook
